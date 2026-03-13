@@ -1798,12 +1798,43 @@ local continueStandTaskAfterRespawn = false
 local postResetLoadoutGraceUntil = 0
 local handleBrownBagCommand
 local handleSmiteCommand
-local primeCombatLoadoutAfterRespawn
-local resetRespawnFireState
-local hasUsableCombatLoadout
-local equipRespawnCombatLoadout
-local requestImmediateCombatLoadoutPrime
-local requestOwnerFollowLoadoutPrimeBurst
+-- lvl 5-safe forward fallbacks: avoid nil-call crashes before the full implementations are assigned later.
+local primeCombatLoadoutAfterRespawn = function(_expectedCharacter)
+    return false
+end
+local resetRespawnFireState = function()
+    followFireInProgress = false
+    lastShootAt = 0
+    lastFollowShotAt = 0
+    lastFlameActivateAt = 0
+end
+local hasUsableCombatLoadout = function(currentCharacter, backpack)
+    if flameModeActive and flameModeTargetUserId and lockedTarget and lockedTarget.UserId == flameModeTargetUserId then
+        return (currentCharacter and currentCharacter:FindFirstChild(FLAME_TOOL_NAME)) ~= nil
+            or (backpack and backpack:FindFirstChild(FLAME_TOOL_NAME)) ~= nil
+    end
+    return #collectGunTools() > 0
+end
+local equipRespawnCombatLoadout = function(currentCharacter, backpack)
+    if flameModeActive and flameModeTargetUserId and lockedTarget and lockedTarget.UserId == flameModeTargetUserId then
+        local flameTool = (currentCharacter and currentCharacter:FindFirstChild(FLAME_TOOL_NAME))
+            or (backpack and backpack:FindFirstChild(FLAME_TOOL_NAME))
+        if flameTool and currentCharacter and flameTool.Parent ~= currentCharacter then
+            flameTool.Parent = currentCharacter
+        elseif not flameTool then
+            equipTool(FLAME_TOOL_NAME)
+        end
+        return hasUsableCombatLoadout(currentCharacter, backpack)
+    end
+    equipConfiguredGuns()
+    return hasUsableCombatLoadout(currentCharacter, backpack)
+end
+local requestImmediateCombatLoadoutPrime = function()
+    return false
+end
+local requestOwnerFollowLoadoutPrimeBurst = function()
+    return false
+end
 
 local function clearPendingOwnerFollowResume()
     pendingOwnerFollowResumeName = nil
